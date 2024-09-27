@@ -748,6 +748,14 @@ class FinTs
     }
 
     /**
+     * @return string|null
+     */
+    public function getKundensystemId(): ?string
+    {
+        return $this->kundensystemId;
+    }
+
+    /**
      * @param string|null $kundensystemId
      *
      * @return void
