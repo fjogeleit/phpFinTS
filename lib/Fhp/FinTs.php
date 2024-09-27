@@ -748,6 +748,16 @@ class FinTs
     }
 
     /**
+     * @param string|null $kundensystemId
+     *
+     * @return void
+     */
+    public function setKundensystemId(?string $kundensystemId): void
+    {
+        $this->kundensystemId = $kundensystemId;
+    }
+
+    /**
      * Like {@link getSelectedTanMode()}, but throws an exception if none was selected.
      * @return TanMode The current TAN mode.
      * @throws \RuntimeException If no TAN mode has been selected.
