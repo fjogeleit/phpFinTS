@@ -72,6 +72,15 @@ abstract class Serializer
     }
 
     /**
+     * @param BaseSegment[] $segments The segments to be serialized.
+     * @return string The concatenated HBCI wire format representation of the segments.
+     */
+    public static function serializeSegments(array $segments): string
+    {
+        return implode(array_map([self::class, 'serializeSegment'], $segments));
+    }
+
+    /**
      * @param BaseSegment|BaseDeg|null $obj An object to be serialized. If null, all fields are implicitly null.
      * @param BaseDescriptor $descriptor The descriptor for the object to be serialized.
      * @return array A partial serialization of that object, namely a (possibly nested) array with all of its elements
@@ -101,11 +110,27 @@ abstract class Serializer
                     throw new \InvalidArgumentException(
                         "Expected array value for $descriptor->class.$elementDescriptor->field, got: $value");
                 }
-                for ($repetition = 0; $repetition < $elementDescriptor->repeated; ++$repetition) {
+                if ($elementDescriptor->repeated === PHP_INT_MAX) {
+                    // For an uncapped repeated field (with @Unlimited), it must be the very last field and we do not
+                    // need to insert padding elements, so we only output its actual contents.
+                    if ($index !== $lastKey) {
+                        throw new \AssertionError(
+                            "Expected unlimited field at $index to be the last one, but the last one is $lastKey"
+                        );
+                    }
+                    $numOutputElements = count($value);
+                } else {
+                    // For a capped repeated field (with @Max), we need to output the specified number of elements, such
+                    // that subsequent fields will be at the right place. If this is the last field, the trailing empty
+                    // elements will be trimmed away again by flattenAndTrimEnd() later.
+                    $numOutputElements = $elementDescriptor->repeated;
+                }
+                for ($repetition = 0; $repetition < $numOutputElements; ++$repetition) {
                     $serializedElements[$index + $repetition] = static::serializeElement(
                         $value === null || $repetition >= count($value) ? null : $value[$repetition],
                         $elementDescriptor->type, $isSegment);
                 }
+                $index += $numOutputElements - 1; // The outer loop will increment by 1 as well.
             }
         }
         return $serializedElements;
@@ -120,7 +145,7 @@ abstract class Serializer
      */
     private static function serializeElement($value, $type, bool $fullySerialize)
     {
-        if (is_string($type)) {
+        if (is_string($type)) { // Scalar value / DE
             return static::serializeDataElement($value, $type);
         } elseif ($type->getName() === Bin::class) {
             /* @var Bin|null $value */

@@ -51,13 +51,15 @@ class HIUPDv6 extends BaseSegment implements HIUPD
      */
     public ?string $erweiterungKontobezogen = null;
 
-    /** {@inheritdoc} */
     public function matchesAccount(SEPAAccount $account): bool
     {
-        return !is_null($this->iban) && $this->iban == $account->getIban();
+        if (!is_null($this->iban)) {
+            return $this->iban == $account->getIban();
+        }
+        // Sparkasse (Koblenz) does not provide an IBAN in this segment, fall back to kontonummer:
+        return !is_null($this->kontoverbindung->kontonummer) && $this->kontoverbindung->kontonummer == $account->getAccountNumber();
     }
 
-    /** {@inheritdoc} */
     public function getErlaubteGeschaeftsvorfaelle(): array
     {
         return $this->erlaubteGeschaeftsvorfaelle ?? [];
